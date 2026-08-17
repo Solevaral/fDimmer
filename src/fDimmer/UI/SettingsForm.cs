@@ -12,6 +12,7 @@ internal sealed class SettingsForm : Form
     private readonly Label _brightnessValue = new();
     private readonly ComboBox _engine = new();
     private readonly CheckedListBox _monitors = new();
+    private readonly ComboBox _language = new();
     private readonly NumericUpDown _minBrightness = new();
     private readonly NumericUpDown _wheelStep = new();
     private readonly NumericUpDown _ramp = new();
@@ -26,12 +27,11 @@ internal sealed class SettingsForm : Form
         _controller = controller;
         _settings = controller.Settings;
 
-        Text = "fDimmer — настройки";
+        Text = Strings.SettingsTitle;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(430, 520);
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Segoe UI", 9f);
 
@@ -41,11 +41,17 @@ internal sealed class SettingsForm : Form
         _controller.StateChanged += OnControllerStateChanged;
     }
 
+    /// <summary>Пользователь включил или выключил обработку колеса над треем.</summary>
+    public event EventHandler<bool>? TrayWheelToggled;
+
+    /// <summary>Выбран другой язык интерфейса.</summary>
+    public event EventHandler<AppLanguage>? LanguageChanged;
+
     private void BuildLayout()
     {
         var y = 14;
 
-        Controls.Add(Section("Яркость", ref y));
+        Controls.Add(Section(Strings.SectionBrightness, ref y));
 
         _brightness.Minimum = Settings.HardFloor;
         _brightness.Maximum = 100;
@@ -64,27 +70,26 @@ internal sealed class SettingsForm : Form
         Controls.Add(_brightnessValue);
         y += 52;
 
-        Controls.Add(Label("Не темнее, чем, %:", 14, y + 3));
-        _minBrightness.SetBounds(200, y, 70, 24);
+        Controls.Add(Label(Strings.NeverDarkerThan, 14, y + 3));
+        _minBrightness.SetBounds(220, y, 70, 24);
         _minBrightness.Minimum = Settings.HardFloor;
         _minBrightness.Maximum = 90;
         _minBrightness.ValueChanged += (_, _) =>
         {
             if (_loading) return;
             _settings.MinBrightness = (int)_minBrightness.Value;
-            _brightness.Minimum = _settings.MinBrightness;
             _controller.SetBrightness(_settings.Brightness);
             LoadValues();
         };
         Controls.Add(_minBrightness);
-        Controls.Add(Hint("Защита от полностью погасшего экрана.", 278, y + 4));
-        y += 38;
+        Controls.Add(Hint(Strings.NeverDarkerHint, 14, y + 28));
+        y += 52;
 
-        Controls.Add(Section("Движок затемнения", ref y));
+        Controls.Add(Section(Strings.SectionEngine, ref y));
 
         _engine.SetBounds(14, y, 400, 24);
         _engine.DropDownStyle = ComboBoxStyle.DropDownList;
-        _engine.Items.AddRange(["Глобально — включая Alt+Tab, «Пуск», панель задач", "Оверлей — только выбранные мониторы"]);
+        _engine.Items.AddRange([Strings.EngineGlobalItem, Strings.EngineOverlayItem]);
         _engine.SelectedIndexChanged += (_, _) =>
         {
             if (_loading) return;
@@ -94,15 +99,14 @@ internal sealed class SettingsForm : Form
         Controls.Add(_engine);
         y += 30;
 
-        Controls.Add(Hint("Системные окна гасит только глобальный движок: он применяет цветовую\n" +
-                          "матрицу ко всей композиции рабочего стола, а не рисует окно поверх.", 14, y));
-        y += 38;
+        Controls.Add(Hint(Strings.EngineHint, 14, y));
+        y += 40;
 
-        Controls.Add(Label("Мониторы для оверлея (ни одного — все):", 14, y));
+        Controls.Add(Label(Strings.OverlayMonitorsLabel, 14, y));
         y += 20;
         _monitors.SetBounds(14, y, 400, 88);
         _monitors.CheckOnClick = true;
-        _monitors.ItemCheck += (_, e) =>
+        _monitors.ItemCheck += (_, _) =>
         {
             if (_loading) return;
             BeginInvoke(() => _controller.SetOverlayMonitors(CheckedMonitors()));
@@ -110,10 +114,10 @@ internal sealed class SettingsForm : Form
         Controls.Add(_monitors);
         y += 98;
 
-        Controls.Add(Section("Управление", ref y));
+        Controls.Add(Section(Strings.SectionControls, ref y));
 
         _trayWheel.SetBounds(14, y, 400, 22);
-        _trayWheel.Text = "Колесо мыши над иконкой в трее меняет яркость";
+        _trayWheel.Text = Strings.TrayWheelOption;
         _trayWheel.CheckedChanged += (_, _) =>
         {
             if (_loading) return;
@@ -123,8 +127,8 @@ internal sealed class SettingsForm : Form
         Controls.Add(_trayWheel);
         y += 26;
 
-        Controls.Add(Label("Шаг колеса, %:", 14, y + 3));
-        _wheelStep.SetBounds(200, y, 70, 24);
+        Controls.Add(Label(Strings.WheelStep, 14, y + 3));
+        _wheelStep.SetBounds(220, y, 70, 24);
         _wheelStep.Minimum = 1;
         _wheelStep.Maximum = 25;
         _wheelStep.ValueChanged += (_, _) => { if (!_loading) _settings.WheelStep = (int)_wheelStep.Value; };
@@ -132,13 +136,13 @@ internal sealed class SettingsForm : Form
         y += 32;
 
         _showOsd.SetBounds(14, y, 400, 22);
-        _showOsd.Text = "Показывать индикатор уровня на экране";
+        _showOsd.Text = Strings.ShowOsdOption;
         _showOsd.CheckedChanged += (_, _) => { if (!_loading) _settings.ShowOsd = _showOsd.Checked; };
         Controls.Add(_showOsd);
         y += 26;
 
-        Controls.Add(Label("Плавность перехода, мс:", 14, y + 3));
-        _ramp.SetBounds(200, y, 70, 24);
+        Controls.Add(Label(Strings.RampLabel, 14, y + 3));
+        _ramp.SetBounds(220, y, 70, 24);
         _ramp.Minimum = 0;
         _ramp.Maximum = 2000;
         _ramp.Increment = 20;
@@ -146,14 +150,26 @@ internal sealed class SettingsForm : Form
         Controls.Add(_ramp);
         y += 32;
 
+        Controls.Add(Label(Strings.LanguageLabel, 14, y + 3));
+        _language.SetBounds(220, y, 194, 24);
+        _language.DropDownStyle = ComboBoxStyle.DropDownList;
+        _language.Items.AddRange([Strings.LanguageAuto, "English", "Русский"]);
+        _language.SelectedIndexChanged += (_, _) =>
+        {
+            if (_loading) return;
+            LanguageChanged?.Invoke(this, (AppLanguage)_language.SelectedIndex);
+        };
+        Controls.Add(_language);
+        y += 32;
+
         _autoStart.SetBounds(14, y, 400, 22);
-        _autoStart.Text = "Запускать вместе с Windows";
+        _autoStart.Text = Strings.StartWithWindows;
         _autoStart.CheckedChanged += (_, _) =>
         {
             if (_loading) return;
             if (!AutoStart.TrySet(_autoStart.Checked, out var error))
             {
-                MessageBox.Show(this, $"Не удалось изменить автозапуск: {error}", "fDimmer",
+                MessageBox.Show(this, Strings.AutoStartFailed(error), "fDimmer",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _loading = true;
                 _autoStart.Checked = AutoStart.IsEnabled;
@@ -163,10 +179,12 @@ internal sealed class SettingsForm : Form
         Controls.Add(_autoStart);
         y += 34;
 
-        var close = new Button { Text = "Закрыть", DialogResult = DialogResult.OK };
+        var close = new Button { Text = Strings.Close, DialogResult = DialogResult.OK };
         close.SetBounds(324, y, 90, 28);
+        close.Click += (_, _) => Close();
         Controls.Add(close);
         AcceptButton = close;
+
         ClientSize = new Size(430, y + 44);
     }
 
@@ -216,6 +234,7 @@ internal sealed class SettingsForm : Form
             _brightnessValue.Text = $"{_controller.TargetBrightness}%";
             _minBrightness.Value = _settings.MinBrightness;
             _engine.SelectedIndex = _controller.ActiveEngine.Kind == EngineKind.Magnification ? 0 : 1;
+            _language.SelectedIndex = (int)_settings.Language;
             _wheelStep.Value = _settings.WheelStep;
             _ramp.Value = _settings.RampMilliseconds;
             _showOsd.Checked = _settings.ShowOsd;
@@ -225,9 +244,8 @@ internal sealed class SettingsForm : Form
             _monitors.Items.Clear();
             foreach (var screen in Screen.AllScreens)
             {
-                var caption = $"{screen.DeviceName}  {screen.Bounds.Width}×{screen.Bounds.Height}" +
-                              (screen.Primary ? "  (основной)" : string.Empty);
-                _monitors.Items.Add(caption, _settings.OverlayMonitors.Contains(screen.DeviceName));
+                _monitors.Items.Add(TrayApplicationContext.MonitorCaption(screen),
+                    _settings.OverlayMonitors.Contains(screen.DeviceName));
             }
             _monitors.Enabled = _controller.ActiveEngine.Kind == EngineKind.Overlay;
         }
@@ -236,9 +254,6 @@ internal sealed class SettingsForm : Form
             _loading = false;
         }
     }
-
-    /// <summary>Пользователь включил или выключил обработку колеса над треем.</summary>
-    public event EventHandler<bool>? TrayWheelToggled;
 
     private void OnControllerStateChanged(object? sender, EventArgs e)
     {

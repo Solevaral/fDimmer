@@ -1,93 +1,96 @@
 # fDimmer
 
-Затемнение экрана для Windows 10/11, которое распространяется **на всё** — включая
-переключатель Alt+Tab, меню «Пуск», панель задач, всплывающие уведомления, окна чужих
-приложений (в том числе запущенных от администратора) и все мониторы сразу.
+**English** · [Русский](README.ru.md)
 
-## Чем отличается от DimScreen и подобных
+Screen dimming for Windows 10/11 that covers **everything** — the Alt+Tab switcher, the Start
+menu, the taskbar, toast notifications, other applications' windows (elevated ones included),
+and every monitor at once.
 
-Обычные диммеры рисуют полупрозрачное чёрное окно поверх экрана. Такое окно принципиально
-не может перекрыть системные поверхности: Alt+Tab, «Пуск», панель задач и уведомления живут
-в более высоких **window bands** (`ZBID_IMMERSIVE_*`, `ZBID_SYSTEM_TOOLS`), куда обычное
-`HWND_TOPMOST` окно не попадает. Обойти это оверлеем можно только через недокументированный
-`SetWindowBand()`, требующий UIAccess — подписанный сертификатом бинарник, установленный
-в `%ProgramFiles%`.
+## How it differs from DimScreen and friends
 
-fDimmer идёт другим путём: **Magnification API**, функция `MagSetFullscreenColorEffect`.
-Она задаёт цветовую матрицу 5×5, которую DWM применяет к итоговой композиции рабочего стола.
-Затемняется не «окно поверх», а сам вывод — поэтому под затемнение попадает всё, что рисует
-композитор. Так же устроены штатные «Цветовые фильтры» Windows. Права администратора
-и UIAccess не нужны.
+Ordinary dimmers draw a translucent black window on top of the screen. Such a window can never
+cover system surfaces: Alt+Tab, Start, the taskbar and notifications live in higher **window
+bands** (`ZBID_IMMERSIVE_*`, `ZBID_SYSTEM_TOOLS`) that a plain `HWND_TOPMOST` window cannot
+reach. The only overlay-based way around that is the undocumented `SetWindowBand()`, which
+requires UIAccess — a code-signed binary installed under `%ProgramFiles%`.
 
-## Два движка
+fDimmer takes a different route: the **Magnification API**, specifically
+`MagSetFullscreenColorEffect`. It sets a 5×5 color matrix that DWM applies to the final desktop
+composition. What gets dimmed is the output itself, not a window on top of it — so everything
+the compositor draws is covered. Windows' own "Color filters" feature works the same way.
+No administrator rights and no UIAccess required.
 
-| Движок | Что гасит | Когда нужен |
+## Two engines
+
+| Engine | What it dims | When to use |
 |---|---|---|
-| **Глобальный** (по умолчанию) | всё: окна, Alt+Tab, «Пуск», трей, уведомления, все мониторы | основной сценарий |
-| **Оверлей** | только выбранные мониторы; системные окна остаются яркими | когда надо затемнить один монитор из нескольких |
+| **Global** (default) | everything: windows, Alt+Tab, Start, tray, notifications, all monitors | the main scenario |
+| **Overlay** | selected monitors only; system UI stays bright | dimming one monitor out of several |
 
-Переключается в меню трея и в настройках. Если глобальный движок недоступен (экранный
-увеличитель отключён политикой), приложение само откатывается на оверлей и сообщает об этом.
+Switchable from the tray menu and the settings window. If the global engine is unavailable
+(screen magnifier disabled by policy), the app falls back to the overlay and says so.
 
-## Управление
+## Controls
 
-- **Колесо мыши над иконкой в трее** — меняет яркость с настраиваемым шагом.
-- **Клик по иконке** — меню: вкл/выкл, пресеты 100/75/50/35/20 %, выбор движка и мониторов,
-  настройки, автозапуск, выход.
-- **Настройки** — ползунок яркости, нижний предел, шаг колеса, плавность перехода,
-  индикатор на экране, автозапуск с Windows.
+- **Mouse wheel over the tray icon** — changes brightness by a configurable step.
+- **Click the icon** — menu: on/off, presets 100/75/50/35/20 %, engine and monitor selection,
+  settings, language, autostart, exit.
+- **Settings** — brightness slider, lower limit, wheel step, transition time, on-screen
+  indicator, interface language, start with Windows.
 
-Настройки лежат в `%AppData%\fDimmer\settings.json`.
+Interface language follows Windows by default and can be forced to English or Russian.
+Settings live in `%AppData%\fDimmer\settings.json`.
 
-## Защита от «погасил экран и не вижу трей»
+## Guard against a screen you can no longer see
 
-Яркость не опускается ниже настраиваемого предела (по умолчанию 15 %, жёсткий минимум 5 %).
-Экран возвращается к норме при выходе из приложения, при завершении сеанса, при
-необработанной ошибке и при принудительном завершении процесса — цветовой эффект живёт
-в контексте процесса и снимается вместе с ним.
+Brightness never drops below a configurable limit (15 % by default, hard minimum 5 %).
+The screen returns to normal when the app exits, when the session ends, on an unhandled error,
+and when the process is force-killed — the color effect lives in the process context and dies
+with it.
 
-Уровень переприменяется после разблокировки сеанса и после смены конфигурации дисплеев.
+The level is re-applied after the session is unlocked and after a display configuration change.
 
-## Известные ограничения
+## Known limitations
 
-- **Экран UAC и Ctrl+Alt+Del** (secure desktop) не затемняются — это отдельный рабочий стол,
-  недостижимый ни для одного пользовательского приложения.
-- **Игры в эксклюзивном полноэкранном режиме** идут мимо DWM и не затемняются.
-- **Конфликт с «Цветовыми фильтрами» Windows и Night Light** — они используют тот же слот
-  цветового эффекта, последний включённый выигрывает.
-- **Аппаратный курсор мыши** не затемняется.
-- Обработка колеса требует, чтобы иконка была **закреплена** в области уведомлений, а не
-  спрятана в переполнении: у скрытой иконки оболочка не отдаёт координаты.
+- **The UAC prompt and Ctrl+Alt+Del** (secure desktop) are not dimmed — that is a separate
+  desktop, out of reach for any user-mode application.
+- **Exclusive-fullscreen games** bypass DWM and are not dimmed.
+- **Conflicts with Windows "Color filters" and Night Light** — they use the same color-effect
+  slot; the last one enabled wins.
+- **The hardware mouse cursor** is not dimmed.
+- Wheel handling requires the tray icon to be **pinned** in the notification area rather than
+  hidden in the overflow: the shell does not report coordinates for a hidden icon.
 
-## Сборка
+## Build
 
 ```bash
 dotnet build fDimmer.sln -c Release
 ```
 
-Одним файлом:
+Single file:
 
 ```bash
 dotnet publish src/fDimmer/fDimmer.csproj -c Release -o publish
 ```
 
-Требуется .NET 9 (framework-dependent). Целевая платформа — x64.
+Requires .NET 9 (framework-dependent). Target platform is x64.
 
-## Устройство кода
+## Code layout
 
 ```
 src/fDimmer/
-  Program.cs                    единственный экземпляр, аварийное снятие эффекта
-  Interop/Magnification.cs      P/Invoke к magnification.dll, цветовая матрица
-  Interop/NativeMethods.cs      окна, мониторы, иконка трея, низкоуровневый хук мыши
-  Core/DimController.cs         состояние, плавный переход, системные события, откат движка
-  Core/MagnificationEngine.cs   глобальный движок
-  Core/OverlayEngine.cs         оверлей-движок
-  Core/TrayWheelHook.cs         колесо над иконкой трея
+  Program.cs                    single instance, emergency effect removal
+  Interop/Magnification.cs      P/Invoke to magnification.dll, the color matrix
+  Interop/NativeMethods.cs      windows, monitors, tray icon, low-level mouse hook
+  Core/DimController.cs         state, smooth ramp, system events, engine fallback
+  Core/MagnificationEngine.cs   global engine
+  Core/OverlayEngine.cs         overlay engine
+  Core/TrayWheelHook.cs         wheel over the tray icon
+  Core/Strings.cs               English / Russian interface strings
   Core/Settings.cs, AutoStart.cs
-  UI/TrayApplicationContext.cs  меню и склейка
-  UI/TrayIcon.cs                иконка через Shell_NotifyIcon (нужны свои hWnd и uID)
-  UI/DimOverlayForm.cs          click-through окно на монитор
-  UI/OsdForm.cs                 индикатор уровня
+  UI/TrayApplicationContext.cs  menu and wiring
+  UI/TrayIcon.cs                icon via Shell_NotifyIcon (needs its own hWnd and uID)
+  UI/DimOverlayForm.cs          click-through window per monitor
+  UI/OsdForm.cs                 level indicator
   UI/SettingsForm.cs
 ```

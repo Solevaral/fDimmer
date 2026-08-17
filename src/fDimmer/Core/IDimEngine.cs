@@ -14,8 +14,6 @@ public interface IDimEngine : IDisposable
 {
     EngineKind Kind { get; }
 
-    string DisplayName { get; }
-
     /// <summary>False, если механизм недоступен в этой системе (политика, отсутствие API).</summary>
     bool IsAvailable { get; }
 

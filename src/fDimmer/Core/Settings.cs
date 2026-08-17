@@ -24,6 +24,9 @@ public sealed class Settings
     /// <summary>DeviceName мониторов для оверлей-движка. Пустой список — все мониторы.</summary>
     public List<string> OverlayMonitors { get; set; } = [];
 
+    /// <summary>Язык интерфейса. Auto — как у Windows.</summary>
+    public AppLanguage Language { get; set; } = AppLanguage.Auto;
+
     public bool ShowOsd { get; set; } = true;
 
     public bool EnableTrayWheel { get; set; } = true;
