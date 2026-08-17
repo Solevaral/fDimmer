@@ -94,3 +94,7 @@ src/fDimmer/
   UI/OsdForm.cs                 level indicator
   UI/SettingsForm.cs
 ```
+
+## License
+
+[MIT](LICENSE)
