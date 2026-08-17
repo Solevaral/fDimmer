@@ -6,6 +6,20 @@ Screen dimming for Windows 10/11 that covers **everything** — the Alt+Tab swit
 menu, the taskbar, toast notifications, other applications' windows (elevated ones included),
 and every monitor at once.
 
+## Download
+
+Grab the latest build from [Releases](https://github.com/Solevaral/fDimmer/releases):
+
+- `fDimmer-<version>-win-x64-standalone.exe` — runs as is, no runtime needed.
+- `fDimmer-<version>-win-x64-net9.exe` — small, requires the .NET 9 Desktop Runtime.
+
+No installer: put the file anywhere and run it. It lives in the notification area; tick
+**Start with Windows** in the menu to have it come back on every logon.
+
+**Windows only.** The whole point of the app — dimming system UI — rests on the DWM color
+effect, which has no counterpart outside Windows. On KDE, look at the built-in night color and
+brightness controls instead.
+
 ## How it differs from DimScreen and friends
 
 Ordinary dimmers draw a translucent black window on top of the screen. Such a window can never
