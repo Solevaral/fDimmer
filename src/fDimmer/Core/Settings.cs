@@ -24,6 +24,17 @@ public sealed class Settings
     /// <summary>DeviceName мониторов для оверлей-движка. Пустой список — все мониторы.</summary>
     public List<string> OverlayMonitors { get; set; } = [];
 
+    /// <summary>Менять яркость по расписанию.</summary>
+    public bool ScheduleEnabled { get; set; }
+
+    /// <summary>Точки расписания. Каждая действует до следующей, сутки замкнуты.</summary>
+    public List<ScheduleEntry> Schedule { get; set; } =
+    [
+        new() { Time = new TimeOnly(21, 0), Brightness = 60 },
+        new() { Time = new TimeOnly(0, 0), Brightness = 40 },
+        new() { Time = new TimeOnly(8, 0), Brightness = 100 },
+    ];
+
     /// <summary>Язык интерфейса. Auto — как у Windows.</summary>
     public AppLanguage Language { get; set; } = AppLanguage.Auto;
 
@@ -86,6 +97,13 @@ public sealed class Settings
         WheelStep = Math.Clamp(WheelStep, 1, 25);
         RampMilliseconds = Math.Clamp(RampMilliseconds, 0, 2000);
         OverlayMonitors ??= [];
+
+        Schedule ??= [];
+        foreach (var entry in Schedule)
+        {
+            entry.Brightness = Math.Clamp(entry.Brightness, HardFloor, 100);
+        }
+        Schedule = [.. Schedule.OrderBy(e => e.Time)];
     }
 
     /// <summary>Приводит уровень к допустимому диапазону с учётом пола яркости.</summary>

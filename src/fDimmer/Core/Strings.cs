@@ -48,6 +48,8 @@ public static class Strings
     public static string PrimaryMonitor => S("(primary)", "(основной)");
     public static string SettingsMenu => S("Settings…", "Настройки…");
     public static string StartWithWindows => S("Start with Windows", "Запускать с Windows");
+    public static string ScheduleMenu => S("Schedule…", "Расписание…");
+    public static string ScheduleEnabled => S("Schedule enabled", "Расписание включено");
     public static string LanguageMenu => S("Language", "Язык");
     public static string LanguageAuto => S("System language", "Язык системы");
     public static string Exit => S("Exit", "Выход");
@@ -91,6 +93,25 @@ public static class Strings
     public static string RampLabel => S("Transition time, ms:", "Плавность перехода, мс:");
     public static string LanguageLabel => S("Language:", "Язык:");
     public static string Close => S("Close", "Закрыть");
+
+    // ---- расписание ----
+
+    public static string ScheduleTitle => S("fDimmer — Schedule", "fDimmer — расписание");
+    public static string ScheduleSection => S("Schedule", "Расписание");
+    public static string ScheduleUseIt => S("Change brightness on a schedule",
+                                            "Менять яркость по расписанию");
+    public static string ScheduleOpen => S("Schedule…", "Расписание…");
+    public static string ScheduleHint => S(
+        "Every point stays in effect until the next one, wrapping around midnight.\n" +
+        "A manual change holds until the next point is due.",
+        "Каждая точка действует до следующей, с переходом через полночь.\n" +
+        "Ручное изменение держится до наступления следующей точки.");
+    public static string ColumnTime => S("Time", "Время");
+    public static string ColumnBrightness => S("Brightness", "Яркость");
+    public static string ScheduleAdd => S("Add / update", "Добавить / обновить");
+    public static string ScheduleRemove => S("Remove", "Удалить");
+    public static string ScheduleOffValue => S("100% (no dimming)", "100 % (без затемнения)");
+    public static string ScheduleActiveNow => S("in effect now", "действует сейчас");
 
     // ---- сообщения ----
 

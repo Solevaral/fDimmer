@@ -14,7 +14,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly OsdForm _osd = new();
     private readonly ContextMenuStrip _menu = new();
 
+    private readonly Scheduler _scheduler;
+
     private SettingsForm? _settingsForm;
+    private ScheduleForm? _scheduleForm;
     private bool _disposed;
 
     public TrayApplicationContext()
@@ -37,7 +40,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _menu.Opening += (_, _) => BuildMenu();
         _menu.Font = new Font("Segoe UI", 9f);
 
+        _scheduler = new Scheduler(_settings, _controller);
+
         _controller.Start();
+        _scheduler.Start();
         UpdateTray();
     }
 
@@ -90,6 +96,25 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(BuildEngineMenu());
         _menu.Items.Add(BuildMonitorsMenu());
+
+        _menu.Items.Add(new ToolStripSeparator());
+
+        var schedule = new ToolStripMenuItem(Strings.ScheduleEnabled)
+        {
+            Checked = _settings.ScheduleEnabled,
+            CheckOnClick = true,
+        };
+        schedule.Click += (_, _) =>
+        {
+            _settings.ScheduleEnabled = schedule.Checked;
+            _settings.Save();
+            _scheduler.Reload();
+        };
+        _menu.Items.Add(schedule);
+
+        var scheduleEditor = new ToolStripMenuItem(Strings.ScheduleMenu);
+        scheduleEditor.Click += (_, _) => OpenSchedule();
+        _menu.Items.Add(scheduleEditor);
 
         _menu.Items.Add(new ToolStripSeparator());
 
@@ -208,12 +233,33 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settings.Save();
         UpdateTray();
 
-        // Меню пересобирается при открытии, а окно настроек построено разом — открываем заново.
+        // Меню пересобирается при открытии, а окна построены разом — открываем заново.
         if (_settingsForm is { IsDisposed: false })
         {
             _settingsForm.Close();
             OpenSettings();
         }
+
+        if (_scheduleForm is { IsDisposed: false })
+        {
+            _scheduleForm.Close();
+            OpenSchedule();
+        }
+    }
+
+    private void OpenSchedule()
+    {
+        if (_scheduleForm is { IsDisposed: false })
+        {
+            _scheduleForm.Activate();
+            return;
+        }
+
+        _scheduleForm = new ScheduleForm(_settings);
+        _scheduleForm.ScheduleChanged += (_, _) => _scheduler.Reload();
+        _scheduleForm.FormClosed += (_, _) => _scheduleForm = null;
+        _scheduleForm.Show();
+        _scheduleForm.Activate();
     }
 
     private void OpenSettings()
@@ -231,6 +277,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             else _wheel.Uninstall();
         };
         _settingsForm.LanguageChanged += (_, language) => ApplyLanguage(language);
+        _settingsForm.ScheduleRequested += (_, _) => OpenSchedule();
         _settingsForm.FormClosed += (_, _) => _settingsForm = null;
         _settingsForm.Show();
         _settingsForm.Activate();
@@ -272,6 +319,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _disposed = true;
 
             _settings.Save();
+            _scheduler.Dispose();
             _wheel.Dispose();
             _controller.ResetScreen();
             _controller.Dispose();
@@ -279,6 +327,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _menu.Dispose();
             _osd.Dispose();
             _settingsForm?.Dispose();
+            _scheduleForm?.Dispose();
         }
 
         base.Dispose(disposing);

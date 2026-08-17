@@ -47,6 +47,9 @@ internal sealed class SettingsForm : Form
     /// <summary>Выбран другой язык интерфейса.</summary>
     public event EventHandler<AppLanguage>? LanguageChanged;
 
+    /// <summary>Нужно открыть редактор расписания.</summary>
+    public event EventHandler? ScheduleRequested;
+
     private void BuildLayout()
     {
         var y = 14;
@@ -113,6 +116,15 @@ internal sealed class SettingsForm : Form
         };
         Controls.Add(_monitors);
         y += 98;
+
+        Controls.Add(Section(Strings.ScheduleSection, ref y));
+
+        var scheduleButton = new Button { Text = Strings.ScheduleOpen };
+        scheduleButton.SetBounds(14, y - 2, 140, 27);
+        scheduleButton.Click += (_, _) => ScheduleRequested?.Invoke(this, EventArgs.Empty);
+        Controls.Add(scheduleButton);
+        Controls.Add(Hint(Strings.ScheduleUseIt, 166, y + 4));
+        y += 38;
 
         Controls.Add(Section(Strings.SectionControls, ref y));
 
