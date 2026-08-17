@@ -23,14 +23,11 @@ public sealed class MagnificationEngine : IDimEngine
         }
         else
         {
-            UnavailableReason = $"MagInitialize не удался (код {Marshal.GetLastWin32Error()}). " +
-                                "Экранный увеличитель отключён политикой или недоступен.";
+            UnavailableReason = Strings.MagInitFailed(Marshal.GetLastWin32Error());
         }
     }
 
     public EngineKind Kind => EngineKind.Magnification;
-
-    public string DisplayName => "Глобально (включая системные окна)";
 
     public bool IsAvailable => _initialized && UnavailableReason is null;
 
@@ -46,7 +43,7 @@ public sealed class MagnificationEngine : IDimEngine
         if (!Magnification.MagSetFullscreenColorEffect(ref effect))
         {
             // Эффект может отвалиться при смене сеанса или конфликте с «Цветовыми фильтрами».
-            UnavailableReason = $"MagSetFullscreenColorEffect вернул FALSE (код {Marshal.GetLastWin32Error()}).";
+            UnavailableReason = Strings.MagSetFailed(Marshal.GetLastWin32Error());
             return;
         }
 

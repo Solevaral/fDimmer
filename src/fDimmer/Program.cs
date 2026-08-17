@@ -22,7 +22,7 @@ internal static class Program
         Application.ThreadException += (_, e) =>
         {
             RestoreScreen();
-            MessageBox.Show($"Непредвиденная ошибка:\n\n{e.Exception}", "fDimmer",
+            MessageBox.Show(Core.Strings.UnexpectedError(e.Exception), "fDimmer",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
             Application.Exit();
         };

@@ -20,6 +20,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     public TrayApplicationContext()
     {
         _settings = Settings.Load();
+        Strings.Use(_settings.Language);
+
         _controller = new DimController(_settings);
         _controller.Notice += OnNotice;
         _controller.StateChanged += (_, _) => UpdateTray();
@@ -58,7 +60,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         _menu.Items.Clear();
 
-        var toggle = new ToolStripMenuItem("Затемнение включено")
+        var toggle = new ToolStripMenuItem(Strings.DimmingEnabled)
         {
             Checked = _controller.IsEnabled,
             CheckOnClick = true,
@@ -70,7 +72,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         foreach (var preset in Presets)
         {
-            var item = new ToolStripMenuItem(preset == 100 ? "100 % — без затемнения" : $"{preset} %")
+            var item = new ToolStripMenuItem(preset == 100 ? Strings.NoDimming : $"{preset}%")
             {
                 Checked = _controller.IsEnabled && _controller.TargetBrightness == preset,
                 Enabled = preset >= _settings.MinBrightness || preset == 100,
@@ -91,11 +93,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _menu.Items.Add(new ToolStripSeparator());
 
-        var settings = new ToolStripMenuItem("Настройки…");
+        var settings = new ToolStripMenuItem(Strings.SettingsMenu);
         settings.Click += (_, _) => OpenSettings();
         _menu.Items.Add(settings);
 
-        var autoStart = new ToolStripMenuItem("Запускать с Windows")
+        _menu.Items.Add(BuildLanguageMenu());
+
+        var autoStart = new ToolStripMenuItem(Strings.StartWithWindows)
         {
             Checked = AutoStart.IsEnabled,
             CheckOnClick = true,
@@ -104,30 +108,30 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             if (!AutoStart.TrySet(autoStart.Checked, out var error))
             {
-                _tray.ShowBalloon("fDimmer", $"Не удалось изменить автозапуск: {error}", warning: true);
+                _tray.ShowBalloon("fDimmer", Strings.AutoStartFailed(error), warning: true);
             }
         };
         _menu.Items.Add(autoStart);
 
         _menu.Items.Add(new ToolStripSeparator());
 
-        var exit = new ToolStripMenuItem("Выход");
+        var exit = new ToolStripMenuItem(Strings.Exit);
         exit.Click += (_, _) => ExitThread();
         _menu.Items.Add(exit);
     }
 
     private ToolStripMenuItem BuildEngineMenu()
     {
-        var root = new ToolStripMenuItem("Движок");
+        var root = new ToolStripMenuItem(Strings.Engine);
 
-        var global = new ToolStripMenuItem("Глобально — все окна, включая системные")
+        var global = new ToolStripMenuItem(Strings.EngineGlobalMenu)
         {
             Checked = _controller.ActiveEngine.Kind == EngineKind.Magnification,
         };
         global.Click += (_, _) => _controller.SetEngine(EngineKind.Magnification);
         root.DropDownItems.Add(global);
 
-        var overlay = new ToolStripMenuItem("Оверлей — выбранные мониторы")
+        var overlay = new ToolStripMenuItem(Strings.EngineOverlayMenu)
         {
             Checked = _controller.ActiveEngine.Kind == EngineKind.Overlay,
         };
@@ -139,12 +143,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private ToolStripMenuItem BuildMonitorsMenu()
     {
-        var root = new ToolStripMenuItem("Мониторы для оверлея")
+        var root = new ToolStripMenuItem(Strings.OverlayMonitors)
         {
             Enabled = _controller.ActiveEngine.Kind == EngineKind.Overlay,
         };
 
-        var all = new ToolStripMenuItem("Все мониторы")
+        var all = new ToolStripMenuItem(Strings.AllMonitors)
         {
             Checked = _settings.OverlayMonitors.Count == 0,
         };
@@ -155,8 +159,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         foreach (var screen in Screen.AllScreens)
         {
             var name = screen.DeviceName;
-            var item = new ToolStripMenuItem(
-                $"{name}  {screen.Bounds.Width}×{screen.Bounds.Height}{(screen.Primary ? "  (основной)" : "")}")
+            var item = new ToolStripMenuItem(MonitorCaption(screen))
             {
                 Checked = _settings.OverlayMonitors.Contains(name),
             };
@@ -170,6 +173,47 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         return root;
+    }
+
+    internal static string MonitorCaption(Screen screen) =>
+        $"{screen.DeviceName}  {screen.Bounds.Width}×{screen.Bounds.Height}" +
+        (screen.Primary ? $"  {Strings.PrimaryMonitor}" : string.Empty);
+
+    private ToolStripMenuItem BuildLanguageMenu()
+    {
+        var root = new ToolStripMenuItem(Strings.LanguageMenu);
+
+        foreach (var (language, caption) in new[]
+        {
+            (AppLanguage.Auto, Strings.LanguageAuto),
+            (AppLanguage.English, "English"),
+            (AppLanguage.Russian, "Русский"),
+        })
+        {
+            var item = new ToolStripMenuItem(caption) { Checked = _settings.Language == language };
+            var value = language;
+            item.Click += (_, _) => ApplyLanguage(value);
+            root.DropDownItems.Add(item);
+        }
+
+        return root;
+    }
+
+    private void ApplyLanguage(AppLanguage language)
+    {
+        if (_settings.Language == language) return;
+
+        _settings.Language = language;
+        Strings.Use(language);
+        _settings.Save();
+        UpdateTray();
+
+        // Меню пересобирается при открытии, а окно настроек построено разом — открываем заново.
+        if (_settingsForm is { IsDisposed: false })
+        {
+            _settingsForm.Close();
+            OpenSettings();
+        }
     }
 
     private void OpenSettings()
@@ -186,6 +230,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             if (enabled) _wheel.Install();
             else _wheel.Uninstall();
         };
+        _settingsForm.LanguageChanged += (_, language) => ApplyLanguage(language);
         _settingsForm.FormClosed += (_, _) => _settingsForm = null;
         _settingsForm.Show();
         _settingsForm.Activate();
@@ -198,18 +243,20 @@ internal sealed class TrayApplicationContext : ApplicationContext
         if (!_settings.ShowOsd) return;
 
         var caption = _controller.IsEnabled
-            ? _controller.ActiveEngine.Kind == EngineKind.Magnification ? "Яркость экрана" : "Яркость (оверлей)"
-            : "Затемнение выключено";
+            ? _controller.ActiveEngine.Kind == EngineKind.Magnification
+                ? Strings.OsdBrightness
+                : Strings.OsdBrightnessOverlay
+            : Strings.OsdDimmingOff;
         _osd.ShowLevel(_controller.TargetBrightness, caption);
     }
 
     private void UpdateTray()
     {
         var level = _controller.TargetBrightness;
-        var engine = _controller.ActiveEngine.Kind == EngineKind.Magnification ? "глобально" : "оверлей";
-        var tip = _controller.IsEnabled
-            ? $"fDimmer — {level} % ({engine})"
-            : "fDimmer — затемнение выключено";
+        var engine = _controller.ActiveEngine.Kind == EngineKind.Magnification
+            ? Strings.EngineShortGlobal
+            : Strings.EngineShortOverlay;
+        var tip = _controller.IsEnabled ? Strings.Tooltip(level, engine) : Strings.TooltipOff;
         _tray.Update(level, tip);
     }
 

@@ -128,8 +128,7 @@ public sealed class DimController : IDisposable
             if (_magnification.IsAvailable) return _magnification;
 
             _settings.Engine = EngineKind.Overlay;
-            Notice?.Invoke(this,
-                $"Глобальный движок недоступен, включён оверлей. {_magnification.UnavailableReason}");
+            Notice?.Invoke(this, Strings.FellBackToOverlay(_magnification.UnavailableReason));
         }
 
         return _overlay;
@@ -182,7 +181,7 @@ public sealed class DimController : IDisposable
         _settings.Engine = EngineKind.Overlay;
         _engine = _overlay;
         _engine.Apply(brightness);
-        Notice?.Invoke(this, $"Переключение на оверлей: {reason}");
+        Notice?.Invoke(this, Strings.SwitchedToOverlay(reason));
         Changed();
     }
 

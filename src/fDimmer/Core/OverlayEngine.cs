@@ -28,8 +28,6 @@ public sealed class OverlayEngine : IDimEngine
 
     public EngineKind Kind => EngineKind.Overlay;
 
-    public string DisplayName => "Оверлей по мониторам";
-
     public bool IsAvailable => true;
 
     public string? UnavailableReason => null;
