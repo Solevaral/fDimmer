@@ -41,6 +41,23 @@ Switchable from the tray menu and the settings window. If the global engine is u
 Interface language follows Windows by default and can be forced to English or Russian.
 Settings live in `%AppData%\fDimmer\settings.json`.
 
+## Schedule
+
+Brightness can follow the clock. A schedule is a list of points — each one stays in effect
+until the next, and the day wraps around midnight:
+
+| Time | Brightness |
+|---|---|
+| 21:00 | 60 % |
+| 00:00 | 40 % |
+| 08:00 | 100 % (no dimming) |
+
+With this schedule the screen is at 60 % from 21:00 to midnight, at 40 % from midnight until
+08:00, and undimmed for the rest of the day. Edit the points in **Schedule…** in the tray menu.
+
+A level is applied only at the moment a point comes due, so a manual change — the wheel, a
+preset, the slider — holds until the next point rather than being overwritten a moment later.
+
 ## Guard against a screen you can no longer see
 
 Brightness never drops below a configurable limit (15 % by default, hard minimum 5 %).
