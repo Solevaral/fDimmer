@@ -1,5 +1,7 @@
 # fDimmer
 
+<img src="assets/icon.png" width="96" height="96" alt="fDimmer icon">
+
 [English](README.md) · **Русский**
 
 Затемнение экрана для Windows 10/11, которое распространяется **на всё** — включая
