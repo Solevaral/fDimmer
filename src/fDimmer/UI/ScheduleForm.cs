@@ -28,6 +28,7 @@ internal sealed class ScheduleForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Segoe UI", 9f);
+        Icon = AppIcon.Default;
 
         BuildLayout();
         LoadEntries();

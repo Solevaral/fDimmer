@@ -1,5 +1,7 @@
 # fDimmer
 
+<img src="assets/icon.png" width="96" height="96" alt="fDimmer icon">
+
 **English** · [Русский](README.ru.md)
 
 Screen dimming for Windows 10/11 that covers **everything** — the Alt+Tab switcher, the Start
