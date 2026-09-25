@@ -55,6 +55,23 @@ internal static class NativeMethods
         public int x, y;
     }
 
+    // ---- гамма-рампа монитора ----
+
+    [DllImport("gdi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr CreateDC(string lpszDriver, string lpszDevice, string? lpszOutput, IntPtr lpInitData);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool DeleteDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetDeviceGammaRamp(IntPtr hdc, [Out] ushort[] lpRamp);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetDeviceGammaRamp(IntPtr hdc, [In] ushort[] lpRamp);
+
     // ---- иконка в области уведомлений ----
     // Своя реализация вместо WinForms NotifyIcon: нужны собственные hWnd и uID,
     // чтобы спрашивать у оболочки прямоугольник иконки (Shell_NotifyIconGetRect).

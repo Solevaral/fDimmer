@@ -15,6 +15,9 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
+        // Прошлый сеанс мог быть убит в режиме «по мониторам»: гамма сама не сбрасывается.
+        Core.GammaRamp.RestoreSavedBaselines();
+
         // Страховка: экран не должен остаться затемнённым, если приложение упало
         // или сеанс завершается до штатной выгрузки контекста.
         AppDomain.CurrentDomain.ProcessExit += (_, _) => RestoreScreen();
@@ -39,6 +42,8 @@ internal static class Program
     /// </summary>
     private static void RestoreScreen()
     {
+        Core.GammaRamp.RestoreSavedBaselines();
+
         try
         {
             var identity = Magnification.Identity();

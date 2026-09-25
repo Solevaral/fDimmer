@@ -21,8 +21,9 @@ public sealed class Settings
 
     public EngineKind Engine { get; set; } = EngineKind.Magnification;
 
-    /// <summary>DeviceName мониторов для оверлей-движка. Пустой список — все мониторы.</summary>
-    public List<string> OverlayMonitors { get; set; } = [];
+    /// <summary>Яркость каждого монитора в режиме «по мониторам» (DeviceName → проценты).
+    /// Монитора нет в списке — для него берётся общий уровень.</summary>
+    public Dictionary<string, int> MonitorLevels { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Менять яркость по расписанию.</summary>
     public bool ScheduleEnabled { get; set; }
@@ -96,7 +97,15 @@ public sealed class Settings
         Brightness = Math.Clamp(Brightness, MinBrightness, 100);
         WheelStep = Math.Clamp(WheelStep, 1, 25);
         RampMilliseconds = Math.Clamp(RampMilliseconds, 0, 2000);
-        OverlayMonitors ??= [];
+
+        // Бывший режим «оверлей» стал частью режима «по мониторам».
+        if (Engine == EngineKind.Overlay) Engine = EngineKind.PerMonitor;
+
+        MonitorLevels = new Dictionary<string, int>(MonitorLevels ?? new Dictionary<string, int>(), StringComparer.OrdinalIgnoreCase);
+        foreach (var device in MonitorLevels.Keys.ToList())
+        {
+            MonitorLevels[device] = Math.Clamp(MonitorLevels[device], MinBrightness, 100);
+        }
 
         Schedule ??= [];
         foreach (var entry in Schedule)
