@@ -36,23 +36,42 @@ composition. What gets dimmed is the output itself, not a window on top of it �
 the compositor draws is covered. Windows' own "Color filters" feature works the same way.
 No administrator rights and no UIAccess required.
 
-## Two engines
+## Two modes
 
-| Engine | What it dims | When to use |
-|---|---|---|
-| **Global** (default) | everything: windows, Alt+Tab, Start, tray, notifications, all monitors | the main scenario |
-| **Overlay** | selected monitors only; system UI stays bright | dimming one monitor out of several |
+| Mode | How it works |
+|---|---|
+| **Common** (default) | One level for everything: every window, Alt+Tab, Start, tray, notifications, all monitors. Uses the DWM color effect. |
+| **Per monitor** (experimental) | Each monitor has its own level. |
 
-Switchable from the tray menu and the settings window. If the global engine is unavailable
-(screen magnifier disabled by policy), the app falls back to the overlay and says so.
+Switch from the tray menu (**Mode**) or the settings window. If the common mode is
+unavailable (screen magnifier disabled by policy), the app switches to per-monitor and says so.
+
+### Per-monitor mode — experimental, may misbehave
+
+The DWM color effect is a single matrix for the whole desktop, so per-monitor levels have to
+come from somewhere else — each monitor's **gamma ramp**. Gamma darkens the monitor's entire
+output, system UI included. Windows, however, refuses gamma ramps below a certain point —
+usually about **50 %**. Darker than that, fDimmer adds a translucent window on top of that
+monitor, and that part of the dimming does **not** cover Alt+Tab or the Start menu.
+
+- Levels below the gamma limit dim system UI only down to that limit.
+- Conflicts with Night Light — both use the gamma ramp.
+- Gamma does nothing in HDR; the window on top does all the work there.
+- Unlike the common mode, gamma survives the process being killed. The original ramps are
+  saved to `%AppData%\fDimmer\gamma-baseline.bin` and put back on the next launch.
+
+The 50 % limit can be lifted by setting `GdiIcmGammaRange` (DWORD) to `256` under
+`HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ICM` and signing out. This changes a
+system-wide setting — do it only if you know you want it.
 
 ## Controls
 
-- **Mouse wheel over the tray icon** — changes brightness by a configurable step.
-- **Click the icon** — menu: on/off, presets 100/75/50/35/20 %, engine and monitor selection,
-  settings, language, autostart, exit.
-- **Settings** — brightness slider, lower limit, wheel step, transition time, on-screen
-  indicator, interface language, start with Windows.
+- **Mouse wheel over the tray icon** — changes brightness by a configurable step. In the
+  per-monitor mode it moves all monitors together, keeping the difference between them.
+- **Click the icon** — menu: on/off, presets 100/75/50/35/20 %, mode, per-monitor presets
+  (in the per-monitor mode), schedule, settings, language, autostart, exit.
+- **Settings** — brightness slider, mode, a slider per monitor, lower limit, wheel step,
+  transition time, on-screen indicator, interface language, start with Windows.
 
 Interface language follows Windows by default and can be forced to English or Russian.
 Settings live in `%AppData%\fDimmer\settings.json`.
@@ -70,6 +89,7 @@ until the next, and the day wraps around midnight:
 
 With this schedule the screen is at 60 % from 21:00 to midnight, at 40 % from midnight until
 08:00, and undimmed for the rest of the day. Edit the points in **Schedule…** in the tray menu.
+In the per-monitor mode a schedule point sets every monitor to the same level.
 
 A level is applied only at the moment a point comes due, so a manual change — the wheel, a
 preset, the slider — holds until the next point rather than being overwritten a moment later.
@@ -79,7 +99,8 @@ preset, the slider — holds until the next point rather than being overwritten 
 Brightness never drops below a configurable limit (15 % by default, hard minimum 5 %).
 The screen returns to normal when the app exits, when the session ends, on an unhandled error,
 and when the process is force-killed — the color effect lives in the process context and dies
-with it.
+with it. In the per-monitor mode a force-kill leaves the gamma dimmed until the next launch,
+which restores it.
 
 The level is re-applied after the session is unlocked and after a display configuration change.
 
@@ -115,17 +136,19 @@ src/fDimmer/
   Program.cs                    single instance, emergency effect removal
   Interop/Magnification.cs      P/Invoke to magnification.dll, the color matrix
   Interop/NativeMethods.cs      windows, monitors, tray icon, low-level mouse hook
-  Core/DimController.cs         state, smooth ramp, system events, engine fallback
-  Core/MagnificationEngine.cs   global engine
-  Core/OverlayEngine.cs         overlay engine
+  Core/DimController.cs         state, smooth ramp, system events, mode fallback
+  Core/MagnificationEngine.cs   common mode
+  Core/PerMonitorEngine.cs      per-monitor mode: gamma, plus a window on top below its limit
+  Core/GammaRamp.cs             monitor gamma ramp, saved originals for crash recovery
+  Core/OverlayLayer.cs          translucent windows on top of monitors
   Core/TrayWheelHook.cs         wheel over the tray icon
   Core/Strings.cs               English / Russian interface strings
-  Core/Settings.cs, AutoStart.cs
+  Core/Settings.cs, AutoStart.cs, Scheduler.cs
   UI/TrayApplicationContext.cs  menu and wiring
   UI/TrayIcon.cs                icon via Shell_NotifyIcon (needs its own hWnd and uID)
   UI/DimOverlayForm.cs          click-through window per monitor
   UI/OsdForm.cs                 level indicator
-  UI/SettingsForm.cs
+  UI/SettingsForm.cs, ScheduleForm.cs
 ```
 
 ## License

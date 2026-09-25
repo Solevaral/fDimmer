@@ -94,8 +94,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(BuildEngineMenu());
-        _menu.Items.Add(BuildMonitorsMenu());
+        _menu.Items.Add(BuildModeMenu());
+        foreach (var item in BuildMonitorMenus()) _menu.Items.Add(item);
 
         _menu.Items.Add(new ToolStripSeparator());
 
@@ -145,64 +145,71 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _menu.Items.Add(exit);
     }
 
-    private ToolStripMenuItem BuildEngineMenu()
+    private ToolStripMenuItem BuildModeMenu()
     {
-        var root = new ToolStripMenuItem(Strings.Engine);
+        var root = new ToolStripMenuItem(Strings.Mode);
 
-        var global = new ToolStripMenuItem(Strings.EngineGlobalMenu)
+        var global = new ToolStripMenuItem(Strings.ModeGlobalMenu)
         {
-            Checked = _controller.ActiveEngine.Kind == EngineKind.Magnification,
+            Checked = _controller.Mode == EngineKind.Magnification,
         };
-        global.Click += (_, _) => _controller.SetEngine(EngineKind.Magnification);
+        global.Click += (_, _) => _controller.SetMode(EngineKind.Magnification);
         root.DropDownItems.Add(global);
 
-        var overlay = new ToolStripMenuItem(Strings.EngineOverlayMenu)
+        var perMonitor = new ToolStripMenuItem(Strings.ModePerMonitorMenu)
         {
-            Checked = _controller.ActiveEngine.Kind == EngineKind.Overlay,
+            Checked = _controller.IsPerMonitor,
         };
-        overlay.Click += (_, _) => _controller.SetEngine(EngineKind.Overlay);
-        root.DropDownItems.Add(overlay);
+        perMonitor.Click += (_, _) => SwitchToPerMonitor();
+        root.DropDownItems.Add(perMonitor);
 
         return root;
     }
 
-    private ToolStripMenuItem BuildMonitorsMenu()
+    private void SwitchToPerMonitor()
     {
-        var root = new ToolStripMenuItem(Strings.OverlayMonitors)
-        {
-            Enabled = _controller.ActiveEngine.Kind == EngineKind.Overlay,
-        };
+        if (_controller.IsPerMonitor) return;
+        _controller.SetMode(EngineKind.PerMonitor);
+        _tray.ShowBalloon("fDimmer", Strings.PerMonitorNotice, warning: true);
+    }
 
-        var all = new ToolStripMenuItem(Strings.AllMonitors)
-        {
-            Checked = _settings.OverlayMonitors.Count == 0,
-        };
-        all.Click += (_, _) => _controller.SetOverlayMonitors([]);
-        root.DropDownItems.Add(all);
-        root.DropDownItems.Add(new ToolStripSeparator());
+    /// <summary>В режиме «по мониторам» — подменю с пресетами для каждого монитора.</summary>
+    private IEnumerable<ToolStripItem> BuildMonitorMenus()
+    {
+        if (!_controller.IsPerMonitor) yield break;
 
         foreach (var screen in Screen.AllScreens)
         {
-            var name = screen.DeviceName;
-            var item = new ToolStripMenuItem(MonitorCaption(screen))
-            {
-                Checked = _settings.OverlayMonitors.Contains(name),
-            };
-            item.Click += (_, _) =>
-            {
-                var selected = new List<string>(_settings.OverlayMonitors);
-                if (!selected.Remove(name)) selected.Add(name);
-                _controller.SetOverlayMonitors(selected);
-            };
-            root.DropDownItems.Add(item);
-        }
+            var device = screen.DeviceName;
+            var level = _controller.TargetFor(device);
+            var root = new ToolStripMenuItem($"{MonitorCaption(screen)} — {level}%");
 
-        return root;
+            foreach (var preset in Presets)
+            {
+                var item = new ToolStripMenuItem(preset == 100 ? Strings.NoDimming : $"{preset}%")
+                {
+                    Checked = _controller.IsEnabled && level == preset,
+                    Enabled = preset >= _settings.MinBrightness || preset == 100,
+                };
+                var value = preset;
+                item.Click += (_, _) =>
+                {
+                    _controller.SetMonitorBrightness(device, value);
+                    ShowOsd();
+                };
+                root.DropDownItems.Add(item);
+            }
+
+            yield return root;
+        }
     }
 
-    internal static string MonitorCaption(Screen screen) =>
-        $"{screen.DeviceName}  {screen.Bounds.Width}×{screen.Bounds.Height}" +
-        (screen.Primary ? $"  {Strings.PrimaryMonitor}" : string.Empty);
+    /// <summary>«Монитор 1 (основной)» — по порядку перечисления мониторов в системе.</summary>
+    internal static string MonitorCaption(Screen screen)
+    {
+        var index = Array.FindIndex(Screen.AllScreens, s => s.DeviceName == screen.DeviceName) + 1;
+        return Strings.MonitorNumber(index) + (screen.Primary ? $" {Strings.PrimaryMonitor}" : string.Empty);
+    }
 
     private ToolStripMenuItem BuildLanguageMenu()
     {
@@ -289,21 +296,22 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (!_settings.ShowOsd) return;
 
-        var caption = _controller.IsEnabled
-            ? _controller.ActiveEngine.Kind == EngineKind.Magnification
-                ? Strings.OsdBrightness
-                : Strings.OsdBrightnessOverlay
-            : Strings.OsdDimmingOff;
+        var caption = !_controller.IsEnabled ? Strings.OsdDimmingOff
+            : _controller.IsPerMonitor ? MonitorLevelsLine()
+            : Strings.OsdBrightness;
         _osd.ShowLevel(_controller.TargetBrightness, caption);
     }
+
+    /// <summary>«1: 60% · 2: 40%» — уровни всех мониторов одной строкой.</summary>
+    private string MonitorLevelsLine() =>
+        string.Join(" · ", Screen.AllScreens.Select((s, i) => $"{i + 1}: {_controller.TargetFor(s.DeviceName)}%"));
 
     private void UpdateTray()
     {
         var level = _controller.TargetBrightness;
-        var engine = _controller.ActiveEngine.Kind == EngineKind.Magnification
-            ? Strings.EngineShortGlobal
-            : Strings.EngineShortOverlay;
-        var tip = _controller.IsEnabled ? Strings.Tooltip(level, engine) : Strings.TooltipOff;
+        var tip = !_controller.IsEnabled ? Strings.TooltipOff
+            : _controller.IsPerMonitor ? $"fDimmer — {MonitorLevelsLine()} ({Strings.ModeShortPerMonitor})"
+            : Strings.Tooltip(level, Strings.ModeShortGlobal);
         _tray.Update(level, tip);
     }
 

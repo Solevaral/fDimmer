@@ -38,13 +38,11 @@ public static class Strings
 
     public static string DimmingEnabled => S("Dimming enabled", "Затемнение включено");
     public static string NoDimming => S("100% — no dimming", "100 % — без затемнения");
-    public static string Engine => S("Engine", "Движок");
-    public static string EngineGlobalMenu => S("Global — every window, system UI included",
-                                               "Глобально — все окна, включая системные");
-    public static string EngineOverlayMenu => S("Overlay — selected monitors",
-                                                "Оверлей — выбранные мониторы");
-    public static string OverlayMonitors => S("Overlay monitors", "Мониторы для оверлея");
-    public static string AllMonitors => S("All monitors", "Все мониторы");
+    public static string Mode => S("Mode", "Режим");
+    public static string ModeGlobalMenu => S("Common — one level for everything, system UI included",
+                                             "Общий — одна яркость на всё, включая системные окна");
+    public static string ModePerMonitorMenu => S("Per monitor — each its own level (experimental)",
+                                                 "По мониторам — у каждого своя (экспериментально)");
     public static string PrimaryMonitor => S("(primary)", "(основной)");
     public static string SettingsMenu => S("Settings…", "Настройки…");
     public static string StartWithWindows => S("Start with Windows", "Запускать с Windows");
@@ -57,10 +55,10 @@ public static class Strings
     // ---- индикатор и подсказка ----
 
     public static string OsdBrightness => S("Screen brightness", "Яркость экрана");
-    public static string OsdBrightnessOverlay => S("Brightness (overlay)", "Яркость (оверлей)");
+    public static string MonitorNumber(int n) => S($"Monitor {n}", $"Монитор {n}");
     public static string OsdDimmingOff => S("Dimming is off", "Затемнение выключено");
-    public static string EngineShortGlobal => S("global", "глобально");
-    public static string EngineShortOverlay => S("overlay", "оверлей");
+    public static string ModeShortGlobal => S("common", "общий");
+    public static string ModeShortPerMonitor => S("per monitor", "по мониторам");
     public static string TooltipOff => S("fDimmer — dimming is off", "fDimmer — затемнение выключено");
     public static string Tooltip(int level, string engine) =>
         S($"fDimmer — {level}% ({engine})", $"fDimmer — {level} % ({engine})");
@@ -72,18 +70,21 @@ public static class Strings
     public static string NeverDarkerThan => S("Never darker than, %:", "Не темнее, чем, %:");
     public static string NeverDarkerHint => S("Keeps the screen from going fully dark.",
                                               "Защита от полностью погасшего экрана.");
-    public static string SectionEngine => S("Dimming engine", "Движок затемнения");
-    public static string EngineGlobalItem => S("Global — Alt+Tab, Start menu and taskbar included",
-                                               "Глобально — включая Alt+Tab, «Пуск», панель задач");
-    public static string EngineOverlayItem => S("Overlay — selected monitors only",
-                                                "Оверлей — только выбранные мониторы");
-    public static string EngineHint => S(
-        "Only the global engine dims system UI: it applies a color matrix to the whole\n" +
-        "desktop composition instead of drawing a window on top of it.",
-        "Системные окна гасит только глобальный движок: он применяет цветовую\n" +
-        "матрицу ко всей композиции рабочего стола, а не рисует окно поверх.");
-    public static string OverlayMonitorsLabel => S("Overlay monitors (none selected = all):",
-                                                   "Мониторы для оверлея (ни одного — все):");
+    public static string SectionMode => S("Mode", "Режим");
+    public static string ModeGlobalItem => S("Common — one level, Alt+Tab, Start menu and taskbar included",
+                                             "Общий — одна яркость, включая Alt+Tab, «Пуск», панель задач");
+    public static string ModePerMonitorItem => S("Per monitor — each monitor its own level (experimental)",
+                                                 "По мониторам — у каждого своя яркость (экспериментально)");
+    public static string SectionPerMonitor => S("Per-monitor brightness", "Яркость по мониторам");
+    public static string PerMonitorOnlyHint => S("Available in the per-monitor mode.",
+                                                 "Работает в режиме «По мониторам».");
+    public static string PerMonitorWarning(int floor) => S(
+        $"Experimental, may misbehave. Down to about {floor}% a monitor is dimmed through its gamma,\n" +
+        "system UI included; darker than that is added by a window on top, which does not cover\n" +
+        "Alt+Tab or the Start menu. Conflicts with Night Light and does nothing in HDR.",
+        $"Экспериментально, может работать некорректно. До ~{floor} % монитор темнеет через гамму,\n" +
+        "включая системные окна; темнее — окном поверх, которое не перекрывает Alt+Tab и «Пуск».\n" +
+        "Конфликтует с «Ночным светом», в HDR не работает.");
     public static string SectionControls => S("Controls", "Управление");
     public static string TrayWheelOption => S("Mouse wheel over the tray icon changes brightness",
                                               "Колесо мыши над иконкой в трее меняет яркость");
@@ -118,12 +119,16 @@ public static class Strings
     public static string AutoStartFailed(string? error) =>
         S($"Could not change autostart: {error}", $"Не удалось изменить автозапуск: {error}");
 
-    public static string FellBackToOverlay(string? reason) =>
-        S($"The global engine is unavailable, overlay enabled instead. {reason}",
-          $"Глобальный движок недоступен, включён оверлей. {reason}");
+    public static string FellBackToPerMonitor(string? reason) =>
+        S($"The common mode is unavailable, per-monitor mode enabled instead. {reason}",
+          $"Общий режим недоступен, включён режим «По мониторам». {reason}");
 
-    public static string SwitchedToOverlay(string? reason) =>
-        S($"Switched to overlay: {reason}", $"Переключение на оверлей: {reason}");
+    public static string SwitchedToPerMonitor(string? reason) =>
+        S($"Switched to per-monitor mode: {reason}", $"Переключение на режим «По мониторам»: {reason}");
+
+    public static string PerMonitorNotice => S(
+        "Per-monitor mode is experimental and may misbehave: below about 50% Alt+Tab and the Start menu stop getting darker.",
+        "Режим «По мониторам» экспериментальный и может работать некорректно: ниже ~50 % Alt+Tab и «Пуск» дальше не темнеют.");
 
     public static string MagInitFailed(int code) =>
         S($"MagInitialize failed (error {code}). The screen magnifier is disabled by policy or unavailable.",

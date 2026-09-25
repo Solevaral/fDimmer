@@ -10,8 +10,9 @@ internal sealed class SettingsForm : Form
 
     private readonly TrackBar _brightness = new();
     private readonly Label _brightnessValue = new();
-    private readonly ComboBox _engine = new();
-    private readonly CheckedListBox _monitors = new();
+    private readonly ComboBox _mode = new();
+    private readonly List<(string Device, TrackBar Slider, Label Value)> _monitorSliders = [];
+    private readonly Label _perMonitorWarning = new();
     private readonly ComboBox _language = new();
     private readonly NumericUpDown _minBrightness = new();
     private readonly NumericUpDown _wheelStep = new();
@@ -89,34 +90,51 @@ internal sealed class SettingsForm : Form
         Controls.Add(Hint(Strings.NeverDarkerHint, 14, y + 28));
         y += 52;
 
-        Controls.Add(Section(Strings.SectionEngine, ref y));
+        Controls.Add(Section(Strings.SectionMode, ref y));
 
-        _engine.SetBounds(14, y, 400, 24);
-        _engine.DropDownStyle = ComboBoxStyle.DropDownList;
-        _engine.Items.AddRange([Strings.EngineGlobalItem, Strings.EngineOverlayItem]);
-        _engine.SelectedIndexChanged += (_, _) =>
+        _mode.SetBounds(14, y, 400, 24);
+        _mode.DropDownStyle = ComboBoxStyle.DropDownList;
+        _mode.Items.AddRange([Strings.ModeGlobalItem, Strings.ModePerMonitorItem]);
+        _mode.SelectedIndexChanged += (_, _) =>
         {
             if (_loading) return;
-            _controller.SetEngine(_engine.SelectedIndex == 0 ? EngineKind.Magnification : EngineKind.Overlay);
+            _controller.SetMode(_mode.SelectedIndex == 0 ? EngineKind.Magnification : EngineKind.PerMonitor);
             LoadValues();
         };
-        Controls.Add(_engine);
-        y += 30;
+        Controls.Add(_mode);
+        y += 34;
 
-        Controls.Add(Hint(Strings.EngineHint, 14, y));
-        y += 40;
+        Controls.Add(Section(Strings.SectionPerMonitor, ref y));
 
-        Controls.Add(Label(Strings.OverlayMonitorsLabel, 14, y));
-        y += 20;
-        _monitors.SetBounds(14, y, 400, 88);
-        _monitors.CheckOnClick = true;
-        _monitors.ItemCheck += (_, _) =>
+        foreach (var screen in Screen.AllScreens)
         {
-            if (_loading) return;
-            BeginInvoke(() => _controller.SetOverlayMonitors(CheckedMonitors()));
-        };
-        Controls.Add(_monitors);
-        y += 98;
+            var device = screen.DeviceName;
+            Controls.Add(Label(TrayApplicationContext.MonitorCaption(screen), 14, y + 8));
+
+            var slider = new TrackBar { Maximum = 100, TickFrequency = 5 };
+            slider.SetBounds(150, y, 190, 45);
+            var value = new Label { Font = new Font("Segoe UI Semibold", 10f) };
+            value.SetBounds(350, y + 8, 64, 20);
+
+            slider.Scroll += (_, _) =>
+            {
+                if (_loading) return;
+                _controller.SetMonitorBrightness(device, slider.Value);
+                value.Text = $"{_controller.TargetFor(device)}%";
+            };
+
+            Controls.Add(slider);
+            Controls.Add(value);
+            _monitorSliders.Add((device, slider, value));
+            y += 44;
+        }
+
+        _perMonitorWarning.AutoSize = true;
+        _perMonitorWarning.Left = 14;
+        _perMonitorWarning.Top = y;
+        _perMonitorWarning.ForeColor = Color.FromArgb(176, 96, 0);
+        Controls.Add(_perMonitorWarning);
+        y += 74;
 
         Controls.Add(Section(Strings.ScheduleSection, ref y));
 
@@ -228,15 +246,6 @@ internal sealed class SettingsForm : Form
         return label;
     }
 
-    private IEnumerable<string> CheckedMonitors()
-    {
-        var screens = Screen.AllScreens;
-        for (var i = 0; i < _monitors.Items.Count && i < screens.Length; i++)
-        {
-            if (_monitors.GetItemChecked(i)) yield return screens[i].DeviceName;
-        }
-    }
-
     private void LoadValues()
     {
         _loading = true;
@@ -246,7 +255,7 @@ internal sealed class SettingsForm : Form
             _brightness.Value = Math.Clamp(_controller.TargetBrightness, _brightness.Minimum, _brightness.Maximum);
             _brightnessValue.Text = $"{_controller.TargetBrightness}%";
             _minBrightness.Value = _settings.MinBrightness;
-            _engine.SelectedIndex = _controller.ActiveEngine.Kind == EngineKind.Magnification ? 0 : 1;
+            _mode.SelectedIndex = _controller.IsPerMonitor ? 1 : 0;
             _language.SelectedIndex = (int)_settings.Language;
             _wheelStep.Value = _settings.WheelStep;
             _ramp.Value = _settings.RampMilliseconds;
@@ -254,13 +263,22 @@ internal sealed class SettingsForm : Form
             _trayWheel.Checked = _settings.EnableTrayWheel;
             _autoStart.Checked = AutoStart.IsEnabled;
 
-            _monitors.Items.Clear();
-            foreach (var screen in Screen.AllScreens)
+            var perMonitor = _controller.IsPerMonitor;
+            foreach (var (device, slider, value) in _monitorSliders)
             {
-                _monitors.Items.Add(TrayApplicationContext.MonitorCaption(screen),
-                    _settings.OverlayMonitors.Contains(screen.DeviceName));
+                slider.Minimum = Math.Max(Settings.HardFloor, _settings.MinBrightness);
+                slider.Value = Math.Clamp(_controller.LevelOf(device), slider.Minimum, slider.Maximum);
+                slider.Enabled = perMonitor;
+                value.Text = perMonitor ? $"{_controller.TargetFor(device)}%" : "—";
             }
-            _monitors.Enabled = _controller.ActiveEngine.Kind == EngineKind.Overlay;
+
+            // Порог гаммы узнаём только в самом режиме: проба ненадолго трогает гамму монитора.
+            var floor = perMonitor
+                ? Screen.AllScreens.Min(s => _controller.GammaFloor(s.DeviceName))
+                : 50;
+            _perMonitorWarning.Text = perMonitor
+                ? Strings.PerMonitorWarning(floor)
+                : Strings.PerMonitorOnlyHint + "\n" + Strings.PerMonitorWarning(floor);
         }
         finally
         {
