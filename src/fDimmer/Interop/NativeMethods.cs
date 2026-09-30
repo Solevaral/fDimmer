@@ -55,6 +55,15 @@ internal static class NativeMethods
         public int x, y;
     }
 
+    // ---- тёмный заголовок окна (Windows 10 20H1+ / 11) ----
+
+    internal const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    internal const int DWMWA_BORDER_COLOR = 34;
+    internal const int DWMWA_CAPTION_COLOR = 35;
+
+    [DllImport("dwmapi.dll")]
+    internal static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
     // ---- гамма-рампа монитора ----
 
     [DllImport("gdi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

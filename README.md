@@ -66,12 +66,21 @@ system-wide setting — do it only if you know you want it.
 
 ## Controls
 
+- **Left-click the tray icon** — the main window:
+  - on/off switch and the mode switch;
+  - a **map of your monitors** laid out as in Windows display settings — click a monitor to
+    pick it; each tile darkens along with its level;
+  - a slider for the picked monitor (1 % steps; arrows, PageUp/PageDown and the wheel work
+    too) and quick levels 100/90/…/20 %;
+  - **Identify** puts a big number on every screen, so you know which tile is which.
+- **Right-click the icon** — the quick menu: on/off, presets, mode, per-monitor presets,
+  schedule, settings, language, autostart, exit.
 - **Mouse wheel over the tray icon** — changes brightness by a configurable step. In the
   per-monitor mode it moves all monitors together, keeping the difference between them.
-- **Click the icon** — menu: on/off, presets 100/75/50/35/20 %, mode, per-monitor presets
-  (in the per-monitor mode), schedule, settings, language, autostart, exit.
-- **Settings** — brightness slider, mode, a slider per monitor, lower limit, wheel step,
-  transition time, on-screen indicator, interface language, start with Windows.
+- **Settings** — lower limit, transition time, wheel, on-screen indicator, interface
+  language, start with Windows.
+
+Clicking a monitor on the map while in the common mode switches to the per-monitor mode.
 
 Interface language follows Windows by default and can be forced to English or Russian.
 Settings live in `%AppData%\fDimmer\settings.json`.
@@ -144,6 +153,10 @@ src/fDimmer/
   Core/TrayWheelHook.cs         wheel over the tray icon
   Core/Strings.cs               English / Russian interface strings
   Core/Settings.cs, AutoStart.cs, Scheduler.cs
+  UI/MainForm.cs                main window: modes, monitor map, slider, quick levels
+  UI/Controls/                  hand-drawn controls: map, slider, switches, chips, buttons
+  UI/Theme.cs                   dark theme in the logo colors, dark title bar
+  UI/IdentifyForm.cs            big monitor numbers for "Identify"
   UI/TrayApplicationContext.cs  menu and wiring
   UI/TrayIcon.cs                icon via Shell_NotifyIcon (needs its own hWnd and uID)
   UI/DimOverlayForm.cs          click-through window per monitor

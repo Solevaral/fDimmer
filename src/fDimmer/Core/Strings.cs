@@ -36,6 +36,7 @@ public static class Strings
 
     // ---- меню трея ----
 
+    public static string OpenApp => S("Open fDimmer", "Открыть fDimmer");
     public static string DimmingEnabled => S("Dimming enabled", "Затемнение включено");
     public static string NoDimming => S("100% — no dimming", "100 % — без затемнения");
     public static string Mode => S("Mode", "Режим");
@@ -63,6 +64,29 @@ public static class Strings
     public static string Tooltip(int level, string engine) =>
         S($"fDimmer — {level}% ({engine})", $"fDimmer — {level} % ({engine})");
 
+    // ---- главное окно ----
+
+    public static string ModeCommon => S("Common", "Общий");
+    public static string ModePerMonitor => S("Per monitor", "По мониторам");
+    public static string StatusOff => S("Dimming is off", "Затемнение выключено");
+    public static string StatusOn(string mode) =>
+        S($"Dimming is on · {mode} mode", $"Затемнение включено · режим «{mode}»");
+    public static string AllMonitors => S("All monitors", "Все мониторы");
+    public static string Identify => S("Identify", "Определить");
+    public static string ScheduleButton => S("Schedule", "Расписание");
+    public static string SettingsButton => S("Settings", "Настройки");
+    public static string CommonModeInfo => S(
+        "One level for everything, Alt+Tab, Start menu and taskbar included.\n" +
+        "Click a monitor to set each one separately.",
+        "Одна яркость на всё, включая Alt+Tab, «Пуск» и панель задач.\n" +
+        "Нажмите на монитор, чтобы настроить каждый отдельно.");
+    public static string PerMonitorBanner(int floor) => S(
+        $"Experimental, may misbehave: below ~{floor}% Alt+Tab and the Start menu\n" +
+        "stop getting darker. Conflicts with Night Light, no effect in HDR.",
+        $"Экспериментально, может работать некорректно: ниже ~{floor} % Alt+Tab и «Пуск»\n" +
+        "дальше не темнеют. Конфликт с «Ночным светом», в HDR не работает.");
+    public static string GammaMarker(int floor) => S($"system UI ≥ {floor}%", $"системные окна ≥ {floor} %");
+
     // ---- окно настроек ----
 
     public static string SettingsTitle => S("fDimmer — Settings", "fDimmer — настройки");
@@ -70,22 +94,8 @@ public static class Strings
     public static string NeverDarkerThan => S("Never darker than, %:", "Не темнее, чем, %:");
     public static string NeverDarkerHint => S("Keeps the screen from going fully dark.",
                                               "Защита от полностью погасшего экрана.");
-    public static string SectionMode => S("Mode", "Режим");
-    public static string ModeGlobalItem => S("Common — one level, Alt+Tab, Start menu and taskbar included",
-                                             "Общий — одна яркость, включая Alt+Tab, «Пуск», панель задач");
-    public static string ModePerMonitorItem => S("Per monitor — each monitor its own level (experimental)",
-                                                 "По мониторам — у каждого своя яркость (экспериментально)");
-    public static string SectionPerMonitor => S("Per-monitor brightness", "Яркость по мониторам");
-    public static string PerMonitorOnlyHint => S("Available in the per-monitor mode.",
-                                                 "Работает в режиме «По мониторам».");
-    public static string PerMonitorWarning(int floor) => S(
-        $"Experimental, may misbehave. Down to about {floor}% a monitor is dimmed through its gamma,\n" +
-        "system UI included; darker than that is added by a window on top, which does not cover\n" +
-        "Alt+Tab or the Start menu. Conflicts with Night Light and does nothing in HDR.",
-        $"Экспериментально, может работать некорректно. До ~{floor} % монитор темнеет через гамму,\n" +
-        "включая системные окна; темнее — окном поверх, которое не перекрывает Alt+Tab и «Пуск».\n" +
-        "Конфликтует с «Ночным светом», в HDR не работает.");
     public static string SectionControls => S("Controls", "Управление");
+    public static string SectionSystem => S("System", "Система");
     public static string TrayWheelOption => S("Mouse wheel over the tray icon changes brightness",
                                               "Колесо мыши над иконкой в трее меняет яркость");
     public static string WheelStep => S("Wheel step, %:", "Шаг колеса, %:");
@@ -98,17 +108,13 @@ public static class Strings
     // ---- расписание ----
 
     public static string ScheduleTitle => S("fDimmer — Schedule", "fDimmer — расписание");
-    public static string ScheduleSection => S("Schedule", "Расписание");
     public static string ScheduleUseIt => S("Change brightness on a schedule",
                                             "Менять яркость по расписанию");
-    public static string ScheduleOpen => S("Schedule…", "Расписание…");
     public static string ScheduleHint => S(
         "Every point stays in effect until the next one, wrapping around midnight.\n" +
         "A manual change holds until the next point is due.",
         "Каждая точка действует до следующей, с переходом через полночь.\n" +
         "Ручное изменение держится до наступления следующей точки.");
-    public static string ColumnTime => S("Time", "Время");
-    public static string ColumnBrightness => S("Brightness", "Яркость");
     public static string ScheduleAdd => S("Add / update", "Добавить / обновить");
     public static string ScheduleRemove => S("Remove", "Удалить");
     public static string ScheduleOffValue => S("100% (no dimming)", "100 % (без затемнения)");

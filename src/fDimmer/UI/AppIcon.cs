@@ -1,8 +1,9 @@
 namespace fDimmer.UI;
 
 /// <summary>
-/// Иконка окон приложения. Читается из самого exe — так же, как её видит проводник, —
-/// а не из отдельного файла: тогда single-file публикация не может её потерять.
+/// Иконка приложения. Маленькая для заголовков окон читается из самого exe — так же, как её
+/// видит проводник. Крупная для шапки главного окна берётся из встроенного app.ico: из exe
+/// Windows отдаёт только 32×32.
 /// </summary>
 internal static class AppIcon
 {
@@ -10,4 +11,14 @@ internal static class AppIcon
         Icon.ExtractAssociatedIcon(Application.ExecutablePath));
 
     public static Icon? Default => Cached.Value;
+
+    /// <summary>Картинка иконки нужного размера в пикселях (ближайший кадр из app.ico).</summary>
+    public static Bitmap? Large(int size)
+    {
+        using var stream = typeof(AppIcon).Assembly.GetManifestResourceStream("fDimmer.app.ico");
+        if (stream is null) return Default?.ToBitmap();
+
+        using var icon = new Icon(stream, size, size);
+        return icon.ToBitmap();
+    }
 }

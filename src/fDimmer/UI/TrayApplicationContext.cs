@@ -16,6 +16,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private readonly Scheduler _scheduler;
 
+    private MainForm? _mainForm;
     private SettingsForm? _settingsForm;
     private ScheduleForm? _scheduleForm;
     private bool _disposed;
@@ -30,7 +31,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _controller.StateChanged += (_, _) => UpdateTray();
 
         _tray = new TrayIcon();
-        _tray.LeftClick += (_, _) => ShowMenu();
+        _tray.LeftClick += (_, _) => OpenMain();
         _tray.RightClick += (_, _) => ShowMenu();
 
         _wheel = new TrayWheelHook(_tray.Handle, _tray.Uid);
@@ -65,6 +66,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private void BuildMenu()
     {
         _menu.Items.Clear();
+
+        var open = new ToolStripMenuItem(Strings.OpenApp) { Font = new Font(_menu.Font, FontStyle.Bold) };
+        open.Click += (_, _) => OpenMain();
+        _menu.Items.Add(open);
+        _menu.Items.Add(new ToolStripSeparator());
 
         var toggle = new ToolStripMenuItem(Strings.DimmingEnabled)
         {
@@ -241,6 +247,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         UpdateTray();
 
         // Меню пересобирается при открытии, а окна построены разом — открываем заново.
+        if (_mainForm is { IsDisposed: false })
+        {
+            _mainForm.Close();
+            OpenMain();
+        }
+
         if (_settingsForm is { IsDisposed: false })
         {
             _settingsForm.Close();
@@ -252,6 +264,24 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _scheduleForm.Close();
             OpenSchedule();
         }
+    }
+
+    private void OpenMain()
+    {
+        if (_mainForm is { IsDisposed: false })
+        {
+            if (_mainForm.WindowState == FormWindowState.Minimized) _mainForm.WindowState = FormWindowState.Normal;
+            _mainForm.Activate();
+            return;
+        }
+
+        _mainForm = new MainForm(_controller);
+        _mainForm.ScheduleRequested += (_, _) => OpenSchedule();
+        _mainForm.SettingsRequested += (_, _) => OpenSettings();
+        _mainForm.PerMonitorEntered += (_, _) => _tray.ShowBalloon("fDimmer", Strings.PerMonitorNotice, warning: true);
+        _mainForm.FormClosed += (_, _) => _mainForm = null;
+        _mainForm.Show();
+        _mainForm.Activate();
     }
 
     private void OpenSchedule()
@@ -284,7 +314,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
             else _wheel.Uninstall();
         };
         _settingsForm.LanguageChanged += (_, language) => ApplyLanguage(language);
-        _settingsForm.ScheduleRequested += (_, _) => OpenSchedule();
         _settingsForm.FormClosed += (_, _) => _settingsForm = null;
         _settingsForm.Show();
         _settingsForm.Activate();
@@ -334,6 +363,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _tray.Dispose();
             _menu.Dispose();
             _osd.Dispose();
+            _mainForm?.Dispose();
             _settingsForm?.Dispose();
             _scheduleForm?.Dispose();
         }

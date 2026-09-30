@@ -9,7 +9,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>fDimmer</AssemblyName>
     <RootNamespace>fDimmer</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>fDimmer</Product>
     <Description>Screen dimming for Windows that covers system UI: Alt+Tab, Start menu, taskbar.</Description>
     <Platforms>x64</Platforms>
@@ -23,7 +23,9 @@
          и колбэками не покрывается source-generated LibraryImport без обвязки. -->
     <!-- WFO0003: DPI-осведомлённость задана в манифесте намеренно. Оверлеи позиционируются
          в физических пикселях с первого кадра, до вызова ApplicationConfiguration.Initialize. -->
-    <NoWarn>$(NoWarn);SYSLIB1054;WFO0003</NoWarn>
+    <!-- WFO1000: дизайнер форм не используется, контролы собираются в коде — сериализация
+         свойств для него не нужна. -->
+    <NoWarn>$(NoWarn);SYSLIB1054;WFO0003;WFO1000</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -31,5 +33,10 @@
     <SelfContained>false</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Крупные кадры иконки для шапки главного окна: из exe Windows отдаёт только 32×32. -->
+    <EmbeddedResource Include="app.ico" LogicalName="fDimmer.app.ico" />
+  </ItemGroup>
 
 </Project>
