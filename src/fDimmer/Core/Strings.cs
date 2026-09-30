@@ -38,6 +38,7 @@ public static class Strings
 
     public static string OpenApp => S("Open fDimmer", "Открыть fDimmer");
     public static string DimmingEnabled => S("Dimming enabled", "Затемнение включено");
+    public static string ToggleDimming => S("Toggle dimming", "Вкл/выкл затемнение");
     public static string NoDimming => S("100% — no dimming", "100 % — без затемнения");
     public static string Mode => S("Mode", "Режим");
     public static string ModeGlobalMenu => S("Common — one level for everything, system UI included",

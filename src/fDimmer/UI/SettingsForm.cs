@@ -80,20 +80,16 @@ internal sealed class SettingsForm : Form
 
         Controls.Add(Section(Strings.SectionControls, ref y));
 
-        // В режиме модуля All-in-one своей иконки в трее нет — колесу над ней не на чем работать.
-        if (!Hosting.IsHosted)
+        _trayWheel.SetBounds(16, y, 420, 24);
+        _trayWheel.Text = Strings.TrayWheelOption;
+        _trayWheel.CheckedChanged += (_, _) =>
         {
-            _trayWheel.SetBounds(16, y, 420, 24);
-            _trayWheel.Text = Strings.TrayWheelOption;
-            _trayWheel.CheckedChanged += (_, _) =>
-            {
-                if (_loading) return;
-                _settings.EnableTrayWheel = _trayWheel.Checked;
-                TrayWheelToggled?.Invoke(this, _trayWheel.Checked);
-            };
-            Controls.Add(_trayWheel);
-            y += 32;
-        }
+            if (_loading) return;
+            _settings.EnableTrayWheel = _trayWheel.Checked;
+            TrayWheelToggled?.Invoke(this, _trayWheel.Checked);
+        };
+        Controls.Add(_trayWheel);
+        y += 32;
 
         Controls.Add(Label(Strings.WheelStep, 16, y + 3));
         _wheelStep.SetBounds(244, y, 76, 26);
@@ -122,7 +118,7 @@ internal sealed class SettingsForm : Form
         Controls.Add(_language);
         y += 46;
 
-        // В режиме модуля автозапуском управляет каркас (галочка «Запускать вместе с каркасом»).
+        // В режиме модуля автозапуском управляет All in One (галочка «Запускать вместе с All in One»).
         if (!Hosting.IsHosted)
         {
             _autoStart.SetBounds(16, y, 420, 24);

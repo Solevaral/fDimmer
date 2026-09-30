@@ -124,9 +124,9 @@ The level is re-applied after the session is unlocked and after a display config
 - Wheel handling requires the tray icon to be **pinned** in the notification area rather than
   hidden in the overflow: the shell does not report coordinates for a hidden icon.
 
-## All-in-one module
+## All in One module
 
-fDimmer can run as a module of [All-in-one](https://github.com/Solevaral/All-in-one), a launcher that installs, updates and starts several tools from one place. The launcher starts it with `--hosted --pipe <name>`. In that mode fDimmer has no tray icon of its own and no autostart switch; the launcher shows its status, opens its windows and stops it gracefully over a named pipe (the screen brightness is restored before exit). Started normally, fDimmer works exactly as before.
+fDimmer can run as a module of [All in One](https://github.com/Solevaral/All-in-one), a launcher that installs, updates and starts several tools from one place. The launcher starts it with `--hosted --pipe <name>`. In that mode fDimmer keeps its tray icon but has no autostart switch of its own: autostart is set in All in One. All in One shows its status, opens its windows and stops it over a named pipe (the screen brightness is restored before exit). Started normally, fDimmer works as before.
 
 ## Build
 
