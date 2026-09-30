@@ -80,16 +80,20 @@ internal sealed class SettingsForm : Form
 
         Controls.Add(Section(Strings.SectionControls, ref y));
 
-        _trayWheel.SetBounds(16, y, 420, 24);
-        _trayWheel.Text = Strings.TrayWheelOption;
-        _trayWheel.CheckedChanged += (_, _) =>
+        // В режиме модуля All-in-one своей иконки в трее нет — колесу над ней не на чем работать.
+        if (!Hosting.IsHosted)
         {
-            if (_loading) return;
-            _settings.EnableTrayWheel = _trayWheel.Checked;
-            TrayWheelToggled?.Invoke(this, _trayWheel.Checked);
-        };
-        Controls.Add(_trayWheel);
-        y += 32;
+            _trayWheel.SetBounds(16, y, 420, 24);
+            _trayWheel.Text = Strings.TrayWheelOption;
+            _trayWheel.CheckedChanged += (_, _) =>
+            {
+                if (_loading) return;
+                _settings.EnableTrayWheel = _trayWheel.Checked;
+                TrayWheelToggled?.Invoke(this, _trayWheel.Checked);
+            };
+            Controls.Add(_trayWheel);
+            y += 32;
+        }
 
         Controls.Add(Label(Strings.WheelStep, 16, y + 3));
         _wheelStep.SetBounds(244, y, 76, 26);
@@ -118,22 +122,30 @@ internal sealed class SettingsForm : Form
         Controls.Add(_language);
         y += 46;
 
-        _autoStart.SetBounds(16, y, 420, 24);
-        _autoStart.Text = Strings.StartWithWindows;
-        _autoStart.CheckedChanged += (_, _) =>
+        // В режиме модуля автозапуском управляет каркас (галочка «Запускать вместе с каркасом»).
+        if (!Hosting.IsHosted)
         {
-            if (_loading) return;
-            if (!AutoStart.TrySet(_autoStart.Checked, out var error))
+            _autoStart.SetBounds(16, y, 420, 24);
+            _autoStart.Text = Strings.StartWithWindows;
+            _autoStart.CheckedChanged += (_, _) =>
             {
-                MessageBox.Show(this, Strings.AutoStartFailed(error), "fDimmer",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                _loading = true;
-                _autoStart.Checked = AutoStart.IsEnabled;
-                _loading = false;
-            }
-        };
-        Controls.Add(_autoStart);
-        y += 44;
+                if (_loading) return;
+                if (!AutoStart.TrySet(_autoStart.Checked, out var error))
+                {
+                    MessageBox.Show(this, Strings.AutoStartFailed(error), "fDimmer",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _loading = true;
+                    _autoStart.Checked = AutoStart.IsEnabled;
+                    _loading = false;
+                }
+            };
+            Controls.Add(_autoStart);
+            y += 44;
+        }
+        else
+        {
+            y += 8;
+        }
 
         var close = new Button { Text = Strings.Close, DialogResult = DialogResult.OK };
         close.SetBounds(340, y, 100, 32);

@@ -1,16 +1,21 @@
+using System.Text.Json.Nodes;
 using fDimmer.Core;
 
 namespace fDimmer.UI;
 
-/// <summary>Склейка: иконка в трее, меню, хук колеса, OSD и контроллер затемнения.</summary>
+/// <summary>
+/// Склейка: иконка в трее, меню, хук колеса, OSD и контроллер затемнения.
+/// В режиме модуля All-in-one (--hosted) вместо иконки и меню — канал <see cref="HostLink"/>.
+/// </summary>
 internal sealed class TrayApplicationContext : ApplicationContext
 {
     private static readonly int[] Presets = [100, 75, 50, 35, 20];
 
     private readonly Settings _settings;
     private readonly DimController _controller;
-    private readonly TrayIcon _tray;
-    private readonly TrayWheelHook _wheel;
+    private readonly TrayIcon? _tray;
+    private readonly TrayWheelHook? _wheel;
+    private readonly HostLink? _link;
     private readonly OsdForm _osd = new();
     private readonly ContextMenuStrip _menu = new();
 
@@ -30,13 +35,25 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _controller.Notice += OnNotice;
         _controller.StateChanged += (_, _) => UpdateTray();
 
-        _tray = new TrayIcon();
-        _tray.LeftClick += (_, _) => OpenMain();
-        _tray.RightClick += (_, _) => ShowMenu();
+        if (Hosting.IsHosted)
+        {
+            // Обработчики канала выполняются в UI-потоке — нужен его контекст синхронизации.
+            if (SynchronizationContext.Current is null)
+                SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
 
-        _wheel = new TrayWheelHook(_tray.Handle, _tray.Uid);
-        _wheel.Scrolled += OnWheelScrolled;
-        if (_settings.EnableTrayWheel) _wheel.Install();
+            _link = new HostLink(Hosting.PipeName, Application.ProductVersion.Split('+')[0], HandleHost, HostActions);
+            _link.Start();
+        }
+        else
+        {
+            _tray = new TrayIcon();
+            _tray.LeftClick += (_, _) => OpenMain();
+            _tray.RightClick += (_, _) => ShowMenu();
+
+            _wheel = new TrayWheelHook(_tray.Handle, _tray.Uid);
+            _wheel.Scrolled += OnWheelScrolled;
+            if (_settings.EnableTrayWheel) _wheel.Install();
+        }
 
         _menu.Opening += (_, _) => BuildMenu();
         _menu.Font = new Font("Segoe UI", 9f);
@@ -58,6 +75,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void ShowMenu()
     {
+        if (_tray is null) return;
+
         // Без вывода окна на передний план меню не закроется по клику мимо него.
         Interop.NativeMethods.SetForegroundWindow(_tray.Handle);
         _menu.Show(Cursor.Position);
@@ -139,7 +158,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             if (!AutoStart.TrySet(autoStart.Checked, out var error))
             {
-                _tray.ShowBalloon("fDimmer", Strings.AutoStartFailed(error), warning: true);
+                Notify(Strings.AutoStartFailed(error));
             }
         };
         _menu.Items.Add(autoStart);
@@ -176,7 +195,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (_controller.IsPerMonitor) return;
         _controller.SetMode(EngineKind.PerMonitor);
-        _tray.ShowBalloon("fDimmer", Strings.PerMonitorNotice, warning: true);
+        Notify(Strings.PerMonitorNotice);
     }
 
     /// <summary>В режиме «по мониторам» — подменю с пресетами для каждого монитора.</summary>
@@ -278,7 +297,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _mainForm = new MainForm(_controller);
         _mainForm.ScheduleRequested += (_, _) => OpenSchedule();
         _mainForm.SettingsRequested += (_, _) => OpenSettings();
-        _mainForm.PerMonitorEntered += (_, _) => _tray.ShowBalloon("fDimmer", Strings.PerMonitorNotice, warning: true);
+        _mainForm.PerMonitorEntered += (_, _) => Notify(Strings.PerMonitorNotice);
         _mainForm.FormClosed += (_, _) => _mainForm = null;
         _mainForm.Show();
         _mainForm.Activate();
@@ -310,8 +329,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settingsForm = new SettingsForm(_controller);
         _settingsForm.TrayWheelToggled += (_, enabled) =>
         {
-            if (enabled) _wheel.Install();
-            else _wheel.Uninstall();
+            if (enabled) _wheel?.Install();
+            else _wheel?.Uninstall();
         };
         _settingsForm.LanguageChanged += (_, language) => ApplyLanguage(language);
         _settingsForm.FormClosed += (_, _) => _settingsForm = null;
@@ -341,11 +360,73 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var tip = !_controller.IsEnabled ? Strings.TooltipOff
             : _controller.IsPerMonitor ? $"fDimmer — {MonitorLevelsLine()} ({Strings.ModeShortPerMonitor})"
             : Strings.Tooltip(level, Strings.ModeShortGlobal);
-        _tray.Update(level, tip);
+        _tray?.Update(level, tip);
+        _link?.Publish("statusChanged", HostStatus());
     }
 
-    private void OnNotice(object? sender, string message) =>
-        _tray.ShowBalloon("fDimmer", message, warning: true);
+    private void OnNotice(object? sender, string message) => Notify(message);
+
+    /// <summary>Всплывающее сообщение: из своего трея или, в режиме модуля, из трея каркаса.</summary>
+    private void Notify(string message)
+    {
+        if (_tray is not null) _tray.ShowBalloon("fDimmer", message, warning: true);
+        else _link?.Publish("notify", new { title = "fDimmer", text = message });
+    }
+
+    // ---- канал каркаса All-in-one ----
+
+    private IEnumerable<(string Id, string Title)> HostActions() =>
+    [
+        ("toggle", Strings.DimmingEnabled),
+        ("schedule", Strings.ScheduleMenu),
+        ("settings", Strings.SettingsMenu),
+    ];
+
+    private object HostStatus() => new
+    {
+        state = "running",
+        summary = !_controller.IsEnabled ? Strings.OsdDimmingOff
+            : _controller.IsPerMonitor ? MonitorLevelsLine()
+            : $"{Strings.OsdBrightness} {_controller.TargetBrightness}%",
+        detail = _controller.IsPerMonitor ? Strings.ModeShortPerMonitor : Strings.ModeShortGlobal,
+        enabled = _controller.IsEnabled,
+        brightness = _controller.TargetBrightness,
+    };
+
+    private Task<object?> HandleHost(string method, JsonNode? args)
+    {
+        switch (method)
+        {
+            case "getStatus":
+                break;
+            case "showWindow":
+                OpenMain();
+                break;
+            case "setEnabled":
+                _controller.SetEnabled(args?["enabled"]?.GetValue<bool>() ?? true);
+                break;
+            case "setBrightness":
+                _controller.SetBrightness(args?["value"]?.GetValue<int>() ?? _controller.TargetBrightness);
+                break;
+            case "invoke":
+                switch (args?["action"]?.GetValue<string>())
+                {
+                    case "toggle": _controller.Toggle(); break;
+                    case "schedule": OpenSchedule(); break;
+                    case "settings": OpenSettings(); break;
+                    default: throw new HostLinkError("Unknown action", "unknownAction");
+                }
+                break;
+            case "shutdown":
+                // Ответ уходит раньше, чем закроется цикл сообщений; экран вернёт Dispose → ResetScreen.
+                var ui = SynchronizationContext.Current;
+                _ = Task.Delay(150).ContinueWith(_ => ui?.Post(__ => ExitThread(), null));
+                return Task.FromResult<object?>(new { accepted = true });
+            default:
+                throw new HostLinkError($"Unknown method {method}", "unknownMethod");
+        }
+        return Task.FromResult<object?>(HostStatus());
+    }
 
     // ---- завершение ----
 
@@ -356,11 +437,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _disposed = true;
 
             _settings.Save();
+            _link?.Dispose();
             _scheduler.Dispose();
-            _wheel.Dispose();
+            _wheel?.Dispose();
             _controller.ResetScreen();
             _controller.Dispose();
-            _tray.Dispose();
+            _tray?.Dispose();
             _menu.Dispose();
             _osd.Dispose();
             _mainForm?.Dispose();

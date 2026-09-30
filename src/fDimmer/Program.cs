@@ -8,8 +8,10 @@ internal static class Program
     private const string SingleInstanceName = @"Local\fDimmer.SingleInstance";
 
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        Core.Hosting.Init(args);
+
         using var mutex = new Mutex(initiallyOwned: true, SingleInstanceName, out var isFirstInstance);
         if (!isFirstInstance) return;
 
